@@ -1,0 +1,21 @@
+--- a/UI/Editor/Video/VideoEditorDocument.swift	2026-10-05 18:33:46
++++ b/UI/Editor/Video/VideoEditorDocument.swift	2026-10-05 18:33:46
+@@ -108,7 +108,8 @@
+         }
+         projectDirectory = directory
+         projectURL = directory?.appendingPathComponent(original.deletingPathExtension().lastPathComponent + ".project.json")
+-        let telemetryURL = sessionOwned ? directory?.appendingPathComponent(CursorTelemetry.filename) : nil
++        // Studio: pointer data detected from other videos lives in their project folder.
++        let telemetryURL = directory?.appendingPathComponent(CursorTelemetry.filename)
+         recording = telemetryURL.flatMap { CursorRecording.load(url: $0) }
+         let camera = sessionOwned ? directory?.appendingPathComponent(VideoCameraRecorder.filename) : nil
+         cameraURL = camera.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+@@ -143,7 +144,7 @@
+ 
+     /// Projects for files outside the recording library live in Application
+     /// Support, keyed by the file's path.
+-    private static func externalProjectDirectory(for url: URL) -> URL? {
++    nonisolated static func externalProjectDirectory(for url: URL) -> URL? {
+         let digest = SHA256.hash(data: Data(url.standardizedFileURL.path.utf8))
+         let key = digest.prefix(12).map { String(format: "%02x", $0) }.joined()
+         let root = RecordingSessionStore.rootURL.deletingLastPathComponent()

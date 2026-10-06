@@ -1,0 +1,11 @@
+--- a/UI/Editor/Video/VideoTimelineView.swift	2026-10-05 17:14:49
++++ b/UI/Editor/Video/VideoTimelineView.swift	2026-10-05 17:14:49
+@@ -748,7 +748,7 @@
+     /// Snaps to the playhead, trim edges and other item edges within 7 pt.
+     private func snap(_ t: Double, excluding: VideoSelection?) -> Double {
+         let threshold = Double(7 / effectivePointsPerSecond)
+-        var candidates = [delegate?.timelineCurrentTime(self) ?? -1, document.project.trimStart, document.project.trimEnd,
++        var candidates: [Double] = [delegate?.timelineCurrentTime(self) ?? -1, document.project.trimStart, document.project.trimEnd,
+                           0, document.duration]
+         for item in items where item.selection != excluding {
+             candidates.append(item.start)
