@@ -14,8 +14,13 @@ Screen Recording permission and no menu-bar app.
 
 It builds directly from a macshot checkout: `sync-sources.sh` symlinks every upstream `.swift` file
 except `AppDelegate.swift` and `main.swift`. Those two are replaced by `Sources/MacshotStudio/Studio/`.
-`patches/` holds two small type annotations that upstream needs to compile with Xcode 26.2, and a
-one-line change that makes the editor load pointer data for videos it didn't record.
+`patches/` holds small changes applied to copies of upstream files, in order:
+
+- `01`, `02`: type annotations upstream needs to compile with Xcode 26.2
+- `03`: load pointer data for videos macshot didn't record
+- `04`: the export popover scrolls instead of clipping its top on macOS 26
+- `05`: the timeline's skim line shows only over the ruler and video track, not over zoom/edit/text items
+- `06`: the clip fills the timeline on first open (it was sized before the window's layout)
 
 ## Build
 
@@ -32,7 +37,8 @@ To update: `git -C ../macshot pull && ./build-app.sh --install`.
 
 ## Use
 
-- Launch it to get an open panel, or use **File > Open Video… (⌘O)**
+- Launch it to get the editor, then drop a video onto the preview or click **Choose Video…**
+  (or use **File > Open Video… (⌘O)**)
 - Drag videos onto the Dock icon, or use **Open With > macshot Studio** in Finder
 - From a terminal: `open -a "macshot Studio" clip.mov`
 

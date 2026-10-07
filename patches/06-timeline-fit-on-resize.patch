@@ -1,0 +1,23 @@
+--- a/UI/Editor/VideoEditorWindowController.swift	2026-10-07 11:36:08
++++ b/UI/Editor/VideoEditorWindowController.swift	2026-10-07 11:36:08
+@@ -148,6 +148,12 @@
+         timelineScroll.contentView.postsBoundsChangedNotifications = true
+         NotificationCenter.default.addObserver(self, selector: #selector(timelineScrolled),
+                                                name: NSView.boundsDidChangeNotification, object: timelineScroll.contentView)
++        // Fit the clip to the timeline whenever its visible width changes:
++        // measured before the window's first layout, it came out too narrow
++        // and the clip looked trimmed.
++        timelineScroll.contentView.postsFrameChangedNotifications = true
++        NotificationCenter.default.addObserver(self, selector: #selector(timelineResized),
++                                               name: NSView.frameDidChangeNotification, object: timelineScroll.contentView)
+         gutter = VideoTimelineGutter()
+         gutter.timeline = timeline
+         gutter.translatesAutoresizingMaskIntoConstraints = false
+@@ -228,6 +234,7 @@
+     }
+ 
+     @objc private func timelineScrolled() { gutter.needsDisplay = true }
++    @objc private func timelineResized() { layoutTimeline() }
+ 
+     func windowDidResize(_ notification: Notification) { layoutTimeline() }
+ 

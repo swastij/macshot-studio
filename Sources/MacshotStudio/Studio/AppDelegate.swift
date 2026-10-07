@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let urls = pendingOpenURLs + cliURLs
         pendingOpenURLs = []
         if urls.isEmpty {
-            openDocument(nil)
+            showEmptyEditor()
         } else {
             urls.forEach(openVideo)
         }
@@ -40,13 +40,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { openDocument(nil) }
+        if !flag { showEmptyEditor() }
         return true
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     // MARK: Opening
+
+    private var emptyEditor: EmptyEditorWindowController?
+
+    /// The editor with no video yet: drop a file or choose one.
+    func showEmptyEditor() {
+        if emptyEditor?.window?.isVisible != true {
+            emptyEditor = EmptyEditorWindowController { [weak self] url in self?.openVideo(url) }
+        }
+        emptyEditor?.showWindow(nil)
+        emptyEditor?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     @objc func openDocument(_ sender: Any?) {
         let panel = NSOpenPanel()
@@ -162,6 +174,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// app. A dock app just stays put.
     func returnFocusIfNeeded() {
         NSApp.setActivationPolicy(.regular)
+        // Last video closed (or failed to open): go back to the empty editor.
+        DispatchQueue.main.async { [weak self] in
+            let editing = NSApp.windows.contains { $0.isVisible && $0.styleMask.contains(.titled) }
+            if !editing { self?.showEmptyEditor() }
+        }
     }
 
     func showFailureToast(_ message: String) {

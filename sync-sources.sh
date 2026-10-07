@@ -21,12 +21,14 @@ echo "Linked $(find "$DEST" -name '*.swift' | wc -l | tr -d ' ') files from $UPS
 # Patched files become real copies so the upstream checkout stays untouched.
 for p in $HERE/patches/*.patch(N); do
   target=$(sed -n 's|^+++ b/\([^[:space:]]*\).*|\1|p' "$p" | head -1)
-  rm "$DEST/$target" && cp "$UPSTREAM/$target" "$DEST/$target"
+  # Copy once; several patches may touch the same file, in order.
+  if [[ -L "$DEST/$target" ]]; then rm "$DEST/$target" && cp "$UPSTREAM/$target" "$DEST/$target"; fi
+  cp "$DEST/$target" "$DEST/$target.before"
   if patch -s -p1 -d "$DEST" < "$p"; then
     echo "Applied ${p:t}"
   else
-    echo "warning: ${p:t} no longer applies (upstream may have fixed it); using upstream file"
-    cp "$UPSTREAM/$target" "$DEST/$target"
-    rm -f "$DEST/$target.orig" "$DEST/$target.rej"
+    echo "warning: ${p:t} no longer applies (upstream may have fixed it); skipping it"
+    mv "$DEST/$target.before" "$DEST/$target"
   fi
+  rm -f "$DEST/$target.before" "$DEST/$target.orig" "$DEST/$target.rej"
 done

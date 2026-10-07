@@ -1,0 +1,17 @@
+--- a/UI/Editor/Video/VideoTimelineView.swift	2026-10-07 11:36:08
++++ b/UI/Editor/Video/VideoTimelineView.swift	2026-10-07 11:36:08
+@@ -619,7 +619,13 @@
+ 
+     override func mouseMoved(with event: NSEvent) {
+         let p = convert(event.locationInWindow, from: nil)
+-        showHover(at: p.x)
++        // The skim line belongs to the ruler and the video track; over the
++        // zoom, edit and text lanes it only gets in the way of their items.
++        if p.y <= laneRect(.clip).maxY {
++            showHover(at: p.x)
++        } else {
++            hoverLayer.isHidden = true
++        }
+         updateCursor(at: p)
+     }
+ 

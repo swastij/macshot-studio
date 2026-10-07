@@ -1,0 +1,62 @@
+--- a/UI/Editor/VideoEditorWindowController+Export.swift	2026-10-07 11:36:08
++++ b/UI/Editor/VideoEditorWindowController+Export.swift	2026-10-07 11:36:08
+@@ -11,7 +11,17 @@
+ 
+     @objc func showExportPanel(_ sender: NSView) {
+         let panel = VideoExportPanel(settings: exportSettings, controller: self)
+-        PopoverHelper.show(panel, size: panel.fittingSize, relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
++        // Popovers can reserve more room than the content's fitting size
++        // (macOS 26), which clipped the top of the panel. Give it slack, keep
++        // it on screen, and let it scroll when there isn't room.
++        var available = CGFloat.greatestFiniteMagnitude
++        if let window = sender.window, let screen = window.screen ?? NSScreen.main {
++            let anchor = window.convertToScreen(sender.convert(sender.bounds, to: nil))
++            available = max(160, anchor.minY - screen.visibleFrame.minY - 40)
++        }
++        let height = min(panel.fittingSize.height + 16, available)
++        PopoverHelper.show(VideoExportScrollView(panel: panel), size: NSSize(width: panel.fittingSize.width, height: height),
++                           relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+     }
+ 
+     func exportSettingsChanged(_ settings: VideoExportSettings) {
+@@ -327,7 +337,40 @@
+ }
+ 
+ // MARK: - Export panel
++
++/// Scrolls the export panel from its top when the popover is shorter than it.
++final class VideoExportScrollView: NSScrollView {
++    private final class FlippedDocument: NSView {
++        override var isFlipped: Bool { true }
++    }
+ 
++    init(panel: VideoExportPanel) {
++        super.init(frame: NSRect(origin: .zero, size: panel.fittingSize))
++        drawsBackground = false
++        hasVerticalScroller = true
++        hasHorizontalScroller = false
++        autohidesScrollers = true
++        scrollerStyle = .overlay
++        borderType = .noBorder
++        let document = FlippedDocument()
++        document.translatesAutoresizingMaskIntoConstraints = false
++        panel.translatesAutoresizingMaskIntoConstraints = false
++        document.addSubview(panel)
++        documentView = document
++        NSLayoutConstraint.activate([
++            panel.topAnchor.constraint(equalTo: document.topAnchor),
++            panel.leadingAnchor.constraint(equalTo: document.leadingAnchor),
++            panel.trailingAnchor.constraint(equalTo: document.trailingAnchor),
++            panel.bottomAnchor.constraint(equalTo: document.bottomAnchor),
++            document.topAnchor.constraint(equalTo: contentView.topAnchor),
++            document.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
++            document.widthAnchor.constraint(equalTo: contentView.widthAnchor),
++        ])
++    }
++
++    required init?(coder: NSCoder) { fatalError() }
++}
++
+ /// Popover with output settings and the export actions.
+ final class VideoExportPanel: NSView {
+     private var settings: VideoExportSettings

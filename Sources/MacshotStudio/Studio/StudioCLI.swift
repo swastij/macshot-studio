@@ -24,6 +24,11 @@ enum StudioCLI {
             RunLoop.main.run()
             return true
         }
+        if let i = args.firstIndex(of: "--ui-snapshot"), i + 2 < args.count {
+            uiSnapshot(video: URL(fileURLWithPath: args[i + 1]), outDir: URL(fileURLWithPath: args[i + 2]))
+            RunLoop.main.run()
+            return true
+        }
         if let i = args.firstIndex(of: "--probe"), i + 5 < args.count {
             probe(url: URL(fileURLWithPath: args[i + 1]), time: Double(args[i + 2])!, x: Int(args[i + 3])!,
                   y: Int(args[i + 4])!, scale: CGFloat(Double(args[i + 5])!))
@@ -126,5 +131,82 @@ enum StudioCLI {
         let job = try VideoEditorExporter(document: document).mp4Job(settings, outputURL: output)
         try await job.export(to: output)
         print("exported \(output.path)")
+    }
+
+    /// Debug: renders Studio's windows to PNGs: the empty editor, the editor
+    /// right after a video loads, and its export popover.
+    private static func uiSnapshot(video: URL, outDir: URL) {
+        NSApp.setActivationPolicy(.regular)
+        try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        func snap(_ name: String) {
+            for (i, window) in NSApp.windows.enumerated() where window.isVisible {
+                guard let content = window.contentView else { continue }
+                content.wantsLayer = true
+                content.layoutSubtreeIfNeeded()
+                content.displayIfNeeded()
+                if String(describing: type(of: window)).contains("Popover"), let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) {
+                    content.cacheDisplay(in: content.bounds, to: rep)
+                    // The popover's blurred background isn't captured; put it on dark.
+                    let flat = NSImage(size: content.bounds.size, flipped: false) { r in
+                        NSColor(white: 0.13, alpha: 1).setFill(); r.fill()
+                        rep.draw(in: r)
+                        return true
+                    }
+                    let url = outDir.appendingPathComponent("\(name)-\(i)-popover.png")
+                    if let tiff = flat.tiffRepresentation, let out = NSBitmapImageRep(data: tiff) {
+                        try? out.representation(using: .png, properties: [:])?.write(to: url)
+                    }
+                    print("\(name): popover \(Int(window.frame.width))x\(Int(window.frame.height)) -> \(url.lastPathComponent)")
+                    continue
+                }
+                guard let layer = content.layer else { continue }
+                let scale = window.backingScaleFactor, size = content.bounds.size
+                guard size.width > 0, let ctx = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
+                                                          bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { continue }
+                ctx.scaleBy(x: scale, y: scale)
+                if content.isFlipped { ctx.translateBy(x: 0, y: size.height); ctx.scaleBy(x: 1, y: -1) }
+                layer.render(in: ctx)
+                guard let image = ctx.makeImage() else { continue }
+                let url = outDir.appendingPathComponent("\(name)-\(i)-\(type(of: window)).png")
+                try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: url)
+                print("\(name): \(type(of: window)) \(Int(window.frame.width))x\(Int(window.frame.height)) -> \(url.lastPathComponent)")
+            }
+        }
+        func after(_ seconds: Double, _ body: @escaping @MainActor () -> Void) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { body() } }
+        }
+        let empty = EmptyEditorWindowController { _ in }
+        empty.showWindow(nil)
+        defer { NSApp.run() }
+        after(1.5) {
+            snap("empty")
+            VideoEditorWindowController.open(url: video, deleteOnClose: false)
+            after(4) {
+                snap("editor")
+                guard let editor = NSApp.windows.compactMap({ $0.windowController as? VideoEditorWindowController }).first else {
+                    print("no editor window"); exit(1)
+                }
+                if let timeline = editor.window?.contentView?.firstDescendant(of: VideoTimelineView.self) {
+                    print("timeline width \(Int(timeline.frame.width)), fit \(Int(timeline.fitWidth)), duration \(editor.editorDocument.duration), "
+                          + "trim \(editor.editorDocument.project.trimStart)-\(editor.editorDocument.project.trimEnd)")
+                }
+                editor.showExportPanel(editor.topBar.exportButton)
+                after(1.5) {
+                    snap("export")
+                    exit(0)
+                }
+            }
+        }
+    }
+}
+
+extension NSView {
+    func firstDescendant<T: NSView>(of type: T.Type) -> T? {
+        for sub in subviews {
+            if let match = sub as? T { return match }
+            if let match = sub.firstDescendant(of: type) { return match }
+        }
+        return nil
     }
 }
