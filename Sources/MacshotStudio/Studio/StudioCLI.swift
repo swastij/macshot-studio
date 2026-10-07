@@ -193,8 +193,18 @@ enum StudioCLI {
                 }
                 editor.showExportPanel(editor.topBar.exportButton)
                 after(1.5) {
+                    for w in NSApp.windows where String(describing: type(of: w)).contains("Popover") {
+                        if let scroll = w.contentView?.firstDescendant(of: VideoExportScrollView.self) {
+                            print("popover window \(w.frame.size) content \(w.contentView!.frame.size) safe \(w.contentView!.safeAreaInsets)")
+                            print("scroll frame \(scroll.frame) safe \(scroll.safeAreaInsets) contentInsets \(scroll.contentInsets) clip \(scroll.contentView.frame) doc \(scroll.documentView!.frame)")
+                        }
+                    }
                     snap("export")
-                    exit(0)
+                    editor.showExportPanel(editor.topBar.exportButton)
+                    after(0.6) {
+                        print("after second Export click, popover visible: \(PopoverHelper.isVisible)")
+                        exit(0)
+                    }
                 }
             }
         }
