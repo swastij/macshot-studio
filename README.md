@@ -5,6 +5,8 @@
 > project only packages that editor as a standalone app and adds pointer detection for videos
 > macshot didn't record. If you want screenshots, annotation and screen recording, use macshot itself.
 
+![macshot Studio editing a recording: text overlay, Auto Zoom and a 2× speed segment on the timeline](docs/editor.png)
+
 A standalone dock app that opens **any** video in [macshot](https://github.com/sw33tLie/macshot)'s
 video editor (trim, cuts, speed, freeze, blur/censor, text, zooms, backgrounds/framing, crop,
 aspect presets, captions, MP4/GIF export). It doesn't do screen capture, so it needs no
